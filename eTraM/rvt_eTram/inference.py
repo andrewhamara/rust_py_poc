@@ -5,6 +5,7 @@ import torch
 from torch.backends import cuda, cudnn
 from models.detection.yolox.utils.boxes import postprocess
 from data.utils.representations import StackedHistogram
+import pickle
 
 
 # env settings
@@ -22,6 +23,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 import hydra
 from hydra import initialize, compose
+from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 from modules.utils.fetch import fetch_model_module
 
@@ -35,6 +37,13 @@ classes = {
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# serialize hidden LSTM state for rust
+def serialize_states(hidden_states):
+    return pickle.dumps(hidden_states)
+
+# deserialize hidden LSTM state from rust
+def deserialize_states(serialized_states):
+    return pickle.loads(serialized_states)
 
 # decode bytes to tensors
 def decode_event_bytes(event_bytes):
@@ -51,7 +60,10 @@ def decode_event_bytes(event_bytes):
     return x.to(device), y.to(device), p.to(device), t.to(device)
 
 
-def main(event_bytes):
+def main(event_bytes, hidden_states=None):
+
+    if GlobalHydra().is_initialized():
+        GlobalHydra().clear()
 
     # setup
     initialize(config_path="eTraM/rvt_eTram/config/model", version_base=None)
@@ -85,18 +97,22 @@ def main(event_bytes):
     # init variables
     output = None
     predictions = None
-    hidden_states = None
+    serialized_hidden_states = None
+
+    if hidden_states:
+        hidden_states = deserialize_states(hidden_states)
 
     # forward pass
     with torch.inference_mode():
-        output, hidden_states, _ = module(
+        output, _, hidden_states = module(
             event_tensor=histogram_rep,
             previous_states=hidden_states,
             retrieve_detections=True
         )
 
+        serialized_hidden_states = serialize_states(hidden_states)
+
         class_logits = output[:, :, 5:]
-        print(class_logits.shape)
 
         class_probabilities = torch.softmax(class_logits, dim=-1)
         predicted_classes = torch.argmax(class_probabilities, dim=-1)
@@ -108,16 +124,18 @@ def main(event_bytes):
                                   conf_thre=.001,
                                   nms_thre=nms_threshold)
 
+    predictions_list = []
     for batch_idx, pred in enumerate(predictions):
         print(f"batch {batch_idx} predictions:")
         if pred is not None:
             for i, box in enumerate(pred): 
                 class_idx = predicted_classes[batch_idx][i].item()
-                class_label = classes.get(class_idx, "unknown")
-                print(class_label)
+                predictions_list.append(class_idx)
         else:
             print("No predictions found.")
 
+    return predictions_list, serialized_hidden_states
+
 if __name__ == '__main__':
     dummy_event_bytes = b'\x00' * 2000
-    main(dummy_event_bytes)
+    predictions, hidden_states = main(dummy_event_bytes)
