@@ -59,22 +59,28 @@ def decode_event_bytes(event_bytes):
 
     return x.to(device), y.to(device), p.to(device), t.to(device)
 
+model, config = None, None
+
+def init_model():
+    global model, config
+    if model is None:
+        print('initializing model...')
+        initialize(config_path="eTraM/rvt_eTram/config/model", version_base=None)
+        config = compose(config_name="rnndet")
+        ckpt_path = Path(config.checkpoint)
+        model_module = fetch_model_module(config=config)
+        model = type(model_module).load_from_checkpoint(str(ckpt_path), **{'full_config': config})
+        model = model.to(device)
+        model.eval()
+        print('model initialized!')
 
 def main(event_bytes, hidden_states=None):
-
+    global model
     if GlobalHydra().is_initialized():
         GlobalHydra().clear()
 
     # setup
-    initialize(config_path="eTraM/rvt_eTram/config/model", version_base=None)
-    config = compose(config_name="rnndet")
-    in_res_hw = tuple(config.model.backbone.in_res_hw)  # Example: (720, 1280)
-    ckpt_path = Path(config.checkpoint)
-    module = fetch_model_module(config=config)
-    module_type = type(module)
-    module = module_type.load_from_checkpoint(str(ckpt_path), **{'full_config': config})
-    module = module.to(device)
-    module.eval()
+    init_model()
 
     # bytes to tensors
     x, y, p, t = decode_event_bytes(event_bytes)
@@ -104,7 +110,7 @@ def main(event_bytes, hidden_states=None):
 
     # forward pass
     with torch.inference_mode():
-        output, _, hidden_states = module(
+        output, _, hidden_states = model(
             event_tensor=histogram_rep,
             previous_states=hidden_states,
             retrieve_detections=True
