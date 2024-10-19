@@ -47,8 +47,8 @@ def deserialize_states(serialized_states):
 
 # decode bytes to tensors
 def decode_event_bytes(event_bytes):
-    dtype = torch.int32
-    num_events = len(event_bytes) // 16
+    dtype = torch.int64
+    num_events = len(event_bytes) // 32
 
     events = torch.frombuffer(event_bytes, dtype=dtype).reshape(num_events, 4)
 
@@ -66,6 +66,7 @@ def init_model():
     if model is None:
         print('initializing model...')
         initialize(config_path="eTraM/rvt_eTram/config/model", version_base=None)
+        #initialize(config_path="config/model", version_base=None)
         config = compose(config_name="rnndet")
         ckpt_path = Path(config.checkpoint)
         model_module = fetch_model_module(config=config)
@@ -132,7 +133,6 @@ def main(event_bytes, hidden_states=None):
 
     predictions_list = []
     for batch_idx, pred in enumerate(predictions):
-        print(f"batch {batch_idx} predictions:")
         if pred is not None:
             for i, box in enumerate(pred): 
                 class_idx = predicted_classes[batch_idx][i].item()
@@ -143,5 +143,6 @@ def main(event_bytes, hidden_states=None):
     return predictions_list, serialized_hidden_states
 
 if __name__ == '__main__':
-    dummy_event_bytes = b'\x00' * 2000
+    dummy_event_bytes = b'\x00' * 2400
     predictions, hidden_states = main(dummy_event_bytes)
+    print(predictions)
