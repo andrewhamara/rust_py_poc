@@ -33,6 +33,7 @@ in that directory, open up inference.py and change the following line:
     initialize(config_path="eTraM/rvt_eTram/config/model", version_base=None)
 
 to:
+
     initialize(config_path="config/model", version_base=None)
 	
 you will need to change this path back later, but this will help make sure you
@@ -46,7 +47,7 @@ and update the 'checkpoint' config/model/rnndet.yaml to be the path of your weig
 
 now try running the inference script:
 
-python inference.py
+    python inference.py
 
 once you get predictions, go back to inference.py and change this line:
 
@@ -62,11 +63,13 @@ go back to the project root:
     cd ../..
 
 and to link rust/python, run:
-    pip install maturin
+
+    pip install maturin    
     maturin develop
 
 you may need to resolve linking issues here, specifically ensuring that the linker knows
 to prioritize your conda environment.
 
 then you can run the project:
+
     cargo run
