@@ -32,7 +32,7 @@ def main(config: DictConfig):
     OmegaConf.to_container(config, resolve=True, throw_on_missing=True)
 
     print('------ Configuration ------')
-    print(OmegaConf.to_yaml(config))
+    #print(OmegaConf.to_yaml(config))
     print('---------------------------')
 
     # ---------------------
@@ -43,48 +43,19 @@ def main(config: DictConfig):
     gpus = [gpus]
 
     # ---------------------
-    # Data
-    # ---------------------
-    data_module = fetch_data_module(config=config)
-
-    # ---------------------
-    # Logging and Checkpoints
-    # ---------------------
-    logger = CSVLogger(save_dir='./validation_logs')
-    ckpt_path = Path(config.checkpoint)
-
-    # ---------------------
     # Model
     # ---------------------
-
+    ckpt_path = config.get('checkpoint', None)
     module = fetch_model_module(config=config)
     module = module.load_from_checkpoint(str(ckpt_path), **{'full_config': config})
+
+    print('-------')
+    print(config.model.in_res_hw)
 
     # ---------------------
     # Callbacks and Misc
     # ---------------------
     callbacks = [ModelSummary(max_depth=2)]
-
-    # ---------------------
-    # Validation
-    # ---------------------
-
-    trainer = pl.Trainer(
-        accelerator='gpu',
-        callbacks=callbacks,
-        default_root_dir=None,
-        devices=gpus,
-        logger=logger,
-        log_every_n_steps=100,
-        precision=config.training.precision,
-        move_metrics_to_cpu=False,
-    )
-    with torch.inference_mode():
-        if config.use_test_set:
-            trainer.test(model=module, datamodule=data_module, ckpt_path=str(ckpt_path))
-        else:
-            trainer.validate(model=module, datamodule=data_module, ckpt_path=str(ckpt_path))
-
 
 if __name__ == '__main__':
     main()

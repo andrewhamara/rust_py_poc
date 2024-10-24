@@ -28,6 +28,8 @@ class Module(pl.LightningModule):
 
         self.mdl_config = full_config.model
         in_res_hw = tuple(self.mdl_config.backbone.in_res_hw)
+        print('wawawawa')
+        print(in_res_hw)
         self.input_padder = InputPadderFromShape(desired_hw=in_res_hw)
 
         self.mdl = YoloXDetector(self.mdl_config)

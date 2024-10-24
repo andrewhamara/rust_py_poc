@@ -18,7 +18,6 @@ def dynamically_modify_train_config(config: DictConfig):
         dataset_name = dataset_cfg.name
         assert dataset_name in {'gen1', 'gen4'}
         dataset_hw = get_dataloading_hw(dataset_config=dataset_cfg)
-        print(dataset_hw)
 
         mdl_cfg = config.model
         mdl_name = mdl_cfg.name

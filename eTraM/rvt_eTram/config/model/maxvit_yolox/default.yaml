@@ -4,13 +4,11 @@ model:
   name: rnndet
   backbone:
     name: MaxViTRNN
-    in_res_hw: [720, 1280]
-    input_channels: 20
-    checkpoint: "/data/hamaraa/rvt-b_eTraM.ckpt"
     compile:
       enable: False
       args:
         mode: reduce-overhead
+    input_channels: 20
     enable_masking: False
     partition_split_32: 2
     embed_dim: 64
@@ -26,7 +24,7 @@ model:
         norm_affine: True
       attention:
         use_torch_mha: False
-        partition_size: 1
+        partition_size: ???
         dim_head: 32
         attention_bias: True
         mlp_activation: gelu
@@ -53,8 +51,8 @@ model:
     depthwise: False
     act: "silu"
   head:
-    name: YoloX
     num_classes: 3
+    name: YoloX
     compile:
       enable: False
       args:

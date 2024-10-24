@@ -1,9 +1,11 @@
 defaults:
-  - dataset: ???
-  - model: rnndet
+  - model/maxvit_yolox/default
   - _self_
 
-checkpoint: ???
+checkpoint: "/data/hamaraa/rvt-b_eTraM.ckpt"
+dataset:
+  name: "gen4"
+  downsample_by_factor_2: True
 use_test_set: False
 hardware:
   num_workers:
